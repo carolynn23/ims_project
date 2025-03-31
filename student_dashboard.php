@@ -64,13 +64,13 @@ include 'config.php';
                         </a>
                     </li>
                     <li class="menu-item">
-                        <a href="#" class="menu-link">
+                        <a href="view_applications.php" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-file"></i>
                             <div data-i18n="Applications">View Applications</div>
                         </a>
                     </li>
                     <li class="menu-item">
-                        <a href="#" class="menu-link">
+                        <a href="submit_reports.php" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-upload"></i>
                             <div data-i18n="Reports">Submit Reports</div>
                         </a>
