@@ -7,8 +7,8 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Lecturer') {
 }
 include 'config.php';
 
-// Fetch all reports with studentID
-$stmt = $pdo->prepare("SELECT r.reportID, r.studentID AS student_id, r.internshipID, r.documentPath, r.submittedAt, r.grade,
+// Fetch reports with employer assessment
+$stmt = $pdo->prepare("SELECT r.reportID, r.studentID AS student_id, r.internshipID, r.documentPath, r.employerAssessmentPath, r.submittedAt, r.grade,
                               u.name AS studentName, i.title AS internshipTitle
                        FROM Reports r
                        JOIN Users u ON r.studentID = u.userID
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         $stmt = $pdo->prepare("UPDATE Reports SET grade = ? WHERE reportID = ?");
         $stmt->execute([$grade, $reportID]);
-        $message = "Grade assigned successfully!";
+        $message = "Grade updated successfully!";
         header("Location: review_assessments.php");
         exit;
     }
@@ -49,6 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
     <script src="./assets/vendor/js/helpers.js"></script>
     <script src="./assets/js/demo.js"></script>
+    <style>
+        .grade-display { display: inline-block; min-width: 40px; }
+        .edit-form { display: none; }
+        .btn-xs { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
+    </style>
 </head>
 <body>
     <div class="layout-wrapper layout-content-navbar">
@@ -137,10 +142,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                             <th>Student ID</th>
                                             <th>Student</th>
                                             <th>Internship</th>
-                                            <th>Document</th>
+                                            <th>Student Report</th>
+                                            <th>Employer Assessment</th>
                                             <th>Submitted At</th>
                                             <th>Grade</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -157,16 +162,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                     <td>
                                                         <a href="<?php echo htmlspecialchars($report['documentPath']); ?>" target="_blank">View Report</a>
                                                     </td>
-                                                    <td><?php echo htmlspecialchars($report['submittedAt']); ?></td>
-                                                    <td><?php echo htmlspecialchars($report['grade'] ?? 'Not Graded'); ?></td>
                                                     <td>
-                                                        <?php if (empty($report['grade'])): ?>
-                                                            <form method="POST" class="d-inline">
-                                                                <input type="hidden" name="reportID" value="<?php echo $report['reportID']; ?>">
-                                                                <input type="text" name="grade" class="form-control d-inline-block w-auto" placeholder="A-F" maxlength="1" required>
-                                                                <button type="submit" class="btn btn-primary btn-sm">Grade</button>
-                                                            </form>
+                                                        <?php if ($report['employerAssessmentPath']): ?>
+                                                            <a href="<?php echo htmlspecialchars($report['employerAssessmentPath']); ?>" target="_blank">View Assessment</a>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">Not Submitted</span>
                                                         <?php endif; ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($report['submittedAt']); ?></td>
+                                                    <td>
+                                                        <div class="grade-display" id="grade-display-<?php echo $report['reportID']; ?>">
+                                                            <?php echo htmlspecialchars($report['grade'] ?? 'Not Graded'); ?>
+                                                            <button class="btn btn-success btn-xs ms-2" onclick="toggleEdit(<?php echo $report['reportID']; ?>)">
+                                                                <?php echo $report['grade'] ? 'Edit' : 'Grade'; ?>
+                                                            </button>
+                                                        </div>
+                                                        <form method="POST" class="edit-form" id="edit-form-<?php echo $report['reportID']; ?>">
+                                                            <input type="hidden" name="reportID" value="<?php echo $report['reportID']; ?>">
+                                                            <input type="text" name="grade" class="form-control d-inline-block w-auto" value="<?php echo htmlspecialchars($report['grade'] ?? ''); ?>" placeholder="A-F" maxlength="1" required>
+                                                            <button type="submit" class="btn btn-success btn-xs ms-1">Save</button>
+                                                            <button type="button" class="btn btn-secondary btn-xs ms-1" onclick="toggleEdit(<?php echo $report['reportID']; ?>)">Cancel</button>
+                                                        </form>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -207,5 +223,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
     <script src="./assets/vendor/js/menu.js"></script>
     <script src="./assets/js/main.js"></script>
+    <script>
+        function toggleEdit(reportID) {
+            const display = document.getElementById(`grade-display-${reportID}`);
+            const form = document.getElementById(`edit-form-${reportID}`);
+            if (display.style.display === 'none') {
+                display.style.display = 'inline-block';
+                form.style.display = 'none';
+            } else {
+                display.style.display = 'none';
+                form.style.display = 'inline-block';
+            }
+        }
+    </script>
 </body>
 </html>
