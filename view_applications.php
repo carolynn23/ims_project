@@ -1,5 +1,5 @@
 <?php
-// apply_internship.php
+// view_applications.php
 session_start();
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Student') {
     header("Location: index.php");
@@ -8,36 +8,21 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Student') {
 include 'config.php';
 
 $studentID = $_SESSION['userID'];
-
-// Fetch available internships (not applied to yet)
-$stmt = $pdo->prepare("SELECT i.internshipID, i.title, i.description, i.location, i.duration, u.name AS employer
-                       FROM Internships i
+$stmt = $pdo->prepare("SELECT a.applicationID, a.status, a.appliedAt, i.title, i.description, u.name AS employer
+                       FROM Applications a
+                       JOIN Internships i ON a.internshipID = i.internshipID
                        JOIN Users u ON i.employerID = u.userID
-                       WHERE i.internshipID NOT IN (
-                           SELECT internshipID FROM Applications WHERE studentID = ?
-                       )");
+                       WHERE a.studentID = ?");
 $stmt->execute([$studentID]);
-$internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Handle application submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $internshipID = $_POST['internshipID'];
-    $stmt = $pdo->prepare("INSERT INTO Applications (studentID, internshipID, status) VALUES (?, ?, 'Pending')");
-    try {
-        $stmt->execute([$studentID, $internshipID]);
-        $message = "Application submitted successfully!";
-    } catch (PDOException $e) {
-        $error = "Error applying: " . $e->getMessage();
-    }
-}
+$applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en" class="light-style layout-menu-fixed" dir="ltr" data-theme="theme-default" data-assets-path="./assets/" data-template="vertical-menu-template-free">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
-    <title>IMS - Apply for Internship</title>
-    <meta name="description" content="Browse and apply for internships" />
+    <title>IMS - View Applications</title>
+    <meta name="description" content="View your internship applications" />
     <link rel="icon" type="image/x-icon" href="./assets/img/favicon/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -65,13 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <div data-i18n="Dashboard">Dashboard</div>
                         </a>
                     </li>
-                    <li class="menu-item active">
+                    <li class="menu-item">
                         <a href="apply_internship.php" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-briefcase"></i>
                             <div data-i18n="Apply">Apply for Internship</div>
                         </a>
                     </li>
-                    <li class="menu-item">
+                    <li class="menu-item active">
                         <a href="view_applications.php" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-file"></i>
                             <div data-i18n="Applications">View Applications</div>
@@ -127,40 +112,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </nav>
                 <div class="content-wrapper">
                     <div class="container-xxl flex-grow-1 container-p-y">
-                        <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Student /</span> Apply for Internship</h4>
+                        <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Student /</span> View Applications</h4>
                         <div class="card">
-                            <h5 class="card-header">Available Internships</h5>
+                            <h5 class="card-header">Your Internship Applications</h5>
                             <div class="table-responsive text-nowrap">
                                 <table class="table">
                                     <thead>
                                         <tr>
-                                            <th>Title</th>
+                                            <th>Internship Title</th>
                                             <th>Employer</th>
-                                            <th>Description</th>
-                                            <th>Location</th>
-                                            <th>Duration</th>
-                                            <th>Action</th>
+                                            <th>Status</th>
+                                            <th>Applied At</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($internships)): ?>
+                                        <?php if (empty($applications)): ?>
                                             <tr>
-                                                <td colspan="6" class="text-center">No available internships.</td>
+                                                <td colspan="4" class="text-center">No applications found.</td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($internships as $internship): ?>
+                                            <?php foreach ($applications as $app): ?>
                                                 <tr>
-                                                    <td><?php echo htmlspecialchars($internship['title']); ?></td>
-                                                    <td><?php echo htmlspecialchars($internship['employer']); ?></td>
-                                                    <td><?php echo htmlspecialchars($internship['description']); ?></td>
-                                                    <td><?php echo htmlspecialchars($internship['location']); ?></td>
-                                                    <td><?php echo htmlspecialchars($internship['duration']); ?></td>
+                                                    <td><?php echo htmlspecialchars($app['title']); ?></td>
+                                                    <td><?php echo htmlspecialchars($app['employer']); ?></td>
                                                     <td>
-                                                        <form method="POST" class="d-inline">
-                                                            <input type="hidden" name="internshipID" value="<?php echo $internship['internshipID']; ?>">
-                                                            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                                                        </form>
+                                                        <span class="badge bg-<?php echo $app['status'] === 'Approved' ? 'success' : ($app['status'] === 'Rejected' ? 'danger' : 'warning'); ?>">
+                                                            <?php echo htmlspecialchars($app['status']); ?>
+                                                        </span>
                                                     </td>
+                                                    <td><?php echo htmlspecialchars($app['appliedAt']); ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
@@ -168,18 +148,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </table>
                             </div>
                         </div>
-                        <?php if (isset($message)): ?>
-                            <div class="alert alert-success alert-dismissible mt-3" role="alert">
-                                <?php echo htmlspecialchars($message); ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (isset($error)): ?>
-                            <div class="alert alert-danger alert-dismissible mt-3" role="alert">
-                                <?php echo htmlspecialchars($error); ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        <?php endif; ?>
                     </div>
                     <footer class="content-footer footer bg-footer-theme">
                         <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
