@@ -1,16 +1,23 @@
 -- database/ims_database.sql
-CREATE DATABASE IF NOT EXISTS ims_db;
+
 USE ims_db;
 
 CREATE TABLE Users (
-    userID INT PRIMARY KEY AUTO_INCREMENT,
+    userID INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    passwordHash VARCHAR(255) NOT NULL,
-    phone VARCHAR(15),
-    role ENUM('Admin', 'Student', 'Employer', 'Lecturer') NOT NULL,
-    status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('Student', 'Lecturer', 'Employer') NOT NULL,
+    studentID VARCHAR(20) DEFAULT NULL UNIQUE, -- Optional, unique for students
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE reset_tokens (
+    tokenID INT AUTO_INCREMENT PRIMARY KEY,
+    userID INT,
+    token VARCHAR(100) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (userID) REFERENCES Users(userID)
 );
 
 CREATE TABLE Internships (
@@ -117,15 +124,8 @@ CREATE TABLE Notifications (
 );
 
 -- Sample Data
-INSERT INTO Users (name, email, passwordHash, role) VALUES
-('Admin User', 'admin@ims.com', 'hashedpass1', 'Admin'),
-('Alice Student', 'alice@ims.com', 'hashedpass2', 'Student'),
-('Bob Employer', 'bob@ims.com', 'hashedpass3', 'Employer');
+INSERT INTO Users (name, email, passwordHash, role, studentID) VALUES
+('Admin User', 'admin@ims.com', 'hashedpass1', 'Admin', NULL),
+('Alice Student', 'alice@ims.com', 'hashedpass2', 'Student', 'STU001'),
+('Bob Employer', 'bob@ims.com', 'hashedpass3', 'Employer', NULL);
 
-INSERT INTO Internships (employerID, title, description, location, duration) VALUES
-(3, 'Web Dev Intern', 'Build web apps', 'Remote', '12 weeks'),
-(3, 'Data Intern', 'Analyze data', 'NY', '10 weeks');
-
-INSERT INTO Applications (studentID, internshipID, status) VALUES
-(2, 1, 'Approved'),
-(2, 2, 'Pending');

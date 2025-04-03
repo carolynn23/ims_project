@@ -1,44 +1,13 @@
 <?php
 // index.php
 session_start();
-include 'config.php';
-
-if (!isset($_SESSION['userID'])) {
-    header("Location: login.php");
+if (isset($_SESSION['role'])) {
+    if ($_SESSION['role'] === 'Student') header("Location: student_dashboard.php");
+    elseif ($_SESSION['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
+    elseif ($_SESSION['role'] === 'Employer') header("Location: employer_dashboard.php");
+    exit;
+} else {
+    header("Location: login.php"); // Redirects to login instead of landing
     exit;
 }
-
-$role = $_SESSION['role'];
-switch ($role) {
-    case 'Admin':
-        header("Location: admin_dashboard.php");
-        break;
-    case 'Student':
-        header("Location: student_dashboard.php");
-        break;
-    case 'Employer':
-        header("Location: employer_dashboard.php");
-        break;
-    case 'Lecturer':
-        header("Location: lecturer_dashboard.php");
-        break;
-    default:
-        $error = "Unknown role";
-}
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>IMS - Home</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-    <h1>Internship Management System</h1>
-    <?php if (isset($error)) echo "<p>$error</p>"; ?>
-    <p>Redirecting...</p>
-    <a href="logout.php">Logout</a>
-    <script src="js/scripts.js"></script>
-</body>
-</html>

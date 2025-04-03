@@ -1,5 +1,5 @@
 <?php
-// login.php
+// signup.php
 session_start();
 if (isset($_SESSION['role'])) {
     if ($_SESSION['role'] === 'Student') header("Location: student_dashboard.php");
@@ -10,21 +10,26 @@ if (isset($_SESSION['role'])) {
 include 'config.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $name = trim($_POST['name']);
     $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
-    $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['userID'] = $user['userID'];
-        $_SESSION['name'] = $user['name'];
-        $_SESSION['role'] = $user['role'];
-        if ($user['role'] === 'Student') header("Location: student_dashboard.php");
-        elseif ($user['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
-        elseif ($user['role'] === 'Employer') header("Location: employer_dashboard.php");
-        exit;
+    $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT);
+    $role = $_POST['role'];
+    $studentID = ($role === 'Student') ? trim($_POST['studentID']) : NULL;
+
+    // Validate studentID for Student role
+    if ($role === 'Student' && empty($studentID)) {
+        $error = "Student ID is required for students.";
     } else {
-        $error = "Invalid email or password.";
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM Users WHERE email = ? OR (studentID = ? AND studentID IS NOT NULL)");
+        $stmt->execute([$email, $studentID]);
+        if ($stmt->fetchColumn() > 0) {
+            $error = "Email or Student ID already registered.";
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO Users (name, email, password, role, studentID) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $email, $password, $role, $studentID]);
+            header("Location: login.php");
+            exit;
+        }
     }
 }
 ?>
@@ -33,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
-    <title>IMS - Login</title>
+    <title>IMS - Sign Up</title>
     <link rel="icon" type="image/x-icon" href="./assets/img/favicon/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -44,6 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="./assets/css/demo.css" />
     <script src="./assets/vendor/js/helpers.js"></script>
     <script src="./assets/js/demo.js"></script>
+    <script>
+        function toggleStudentID() {
+            var role = document.getElementById('role').value;
+            var studentIDField = document.getElementById('studentIDField');
+            studentIDField.style.display = (role === 'Student') ? 'block' : 'none';
+        }
+    </script>
 </head>
 <body>
     <div class="container-xxl">
@@ -51,9 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="authentication-inner">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="mb-2">Welcome to IMS</h4>
-                        <p class="mb-4">Sign in to your account.</p>
+                        <h4 class="mb-2">Sign Up for IMS</h4>
+                        <p class="mb-4">Create your account.</p>
                         <form method="POST">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required />
+                            </div>
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email" name="email" required />
@@ -62,10 +78,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <label for="password" class="form-label">Password</label>
                                 <input type="password" class="form-control" id="password" name="password" required />
                             </div>
-                            <button type="submit" class="btn btn-primary d-grid w-100">Login</button>
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Role</label>
+                                <select class="form-select" id="role" name="role" required onchange="toggleStudentID()">
+                                    <option value="Student">Student</option>
+                                    <option value="Lecturer">Lecturer</option>
+                                    <option value="Employer">Employer</option>
+                                </select>
+                            </div>
+                            <div class="mb-3" id="studentIDField" style="display: block;">
+                                <label for="studentID" class="form-label">Student ID</label>
+                                <input type="text" class="form-control" id="studentID" name="studentID" placeholder="e.g., STU001" />
+                            </div>
+                            <button type="submit" class="btn btn-primary d-grid w-100">Sign Up</button>
                         </form>
                         <p class="text-center mt-3">
-                            <a href="forgot_password.php">Forgot Password?</a> | <a href="signup.php">Sign Up</a>
+                            Have an account? <a href="login.php">Login</a>
                         </p>
                         <?php if (isset($error)): ?>
                             <div class="alert alert-danger mt-3" role="alert"><?php echo htmlspecialchars($error); ?></div>

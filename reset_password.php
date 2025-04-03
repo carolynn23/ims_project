@@ -1,30 +1,29 @@
 <?php
-// login.php
+// reset_password.php
 session_start();
 if (isset($_SESSION['role'])) {
-    if ($_SESSION['role'] === 'Student') header("Location: student_dashboard.php");
-    elseif ($_SESSION['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
-    elseif ($_SESSION['role'] === 'Employer') header("Location: employer_dashboard.php");
+    header("Location: index.php");
     exit;
 }
 include 'config.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
-    $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['userID'] = $user['userID'];
-        $_SESSION['name'] = $user['name'];
-        $_SESSION['role'] = $user['role'];
-        if ($user['role'] === 'Student') header("Location: student_dashboard.php");
-        elseif ($user['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
-        elseif ($user['role'] === 'Employer') header("Location: employer_dashboard.php");
-        exit;
-    } else {
-        $error = "Invalid email or password.";
+$token = $_GET['token'] ?? '';
+if (empty($token)) {
+    $error = "Invalid or missing token.";
+} else {
+    $stmt = $pdo->prepare("SELECT * FROM reset_tokens WHERE token = ? AND expires_at > NOW()");
+    $stmt->execute([$token]);
+    $token_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$token_data) {
+        $error = "Invalid or expired token.";
+    } elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE Users SET password = ? WHERE userID = ?");
+        $stmt->execute([$password, $token_data['userID']]);
+        $stmt = $pdo->prepare("DELETE FROM reset_tokens WHERE token = ?");
+        $stmt->execute([$token]);
+        $message = "Password reset successfully. Please log in.";
     }
 }
 ?>
@@ -33,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
-    <title>IMS - Login</title>
+    <title>IMS - Reset Password</title>
     <link rel="icon" type="image/x-icon" href="./assets/img/favicon/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -51,25 +50,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="authentication-inner">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="mb-2">Welcome to IMS</h4>
-                        <p class="mb-4">Sign in to your account.</p>
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" required />
+                        <h4 class="mb-2">Reset Password</h4>
+                        <p class="mb-4">Enter your new password.</p>
+                        <?php if (isset($message)): ?>
+                            <div class="alert alert-success mb-3" role="alert">
+                                <?php echo htmlspecialchars($message); ?> <a href="login.php">Login here</a>.
                             </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" required />
-                            </div>
-                            <button type="submit" class="btn btn-primary d-grid w-100">Login</button>
-                        </form>
-                        <p class="text-center mt-3">
-                            <a href="forgot_password.php">Forgot Password?</a> | <a href="signup.php">Sign Up</a>
-                        </p>
-                        <?php if (isset($error)): ?>
-                            <div class="alert alert-danger mt-3" role="alert"><?php echo htmlspecialchars($error); ?></div>
+                        <?php elseif (isset($error)): ?>
+                            <div class="alert alert-danger mb-3" role="alert"><?php echo htmlspecialchars($error); ?></div>
+                        <?php else: ?>
+                            <form method="POST">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">New Password</label>
+                                    <input type="password" class="form-control" id="password" name="password" required />
+                                </div>
+                                <button type="submit" class="btn btn-primary d-grid w-100">Reset Password</button>
+                            </form>
                         <?php endif; ?>
+                        <p class="text-center mt-3">
+                            <a href="login.php">Back to Login</a>
+                        </p>
                     </div>
                 </div>
             </div>
