@@ -1,5 +1,5 @@
 -- database/ims_database.sql
-
+CREATE DATABASE IF NOT EXISTS ims_db;
 USE ims_db;
 
 CREATE TABLE Users (
@@ -116,47 +116,16 @@ CREATE TABLE Notifications (
     FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE
 );
 
+-- Sample Data
+INSERT INTO Users (name, email, passwordHash, role) VALUES
+('Admin User', 'admin@ims.com', 'hashedpass1', 'Admin'),
+('Alice Student', 'alice@ims.com', 'hashedpass2', 'Student'),
+('Bob Employer', 'bob@ims.com', 'hashedpass3', 'Employer');
 
--- Users
-INSERT INTO Users (name, email, passwordHash, phone, role, status) VALUES
-('John Admin', 'john.admin@university.com', 'hash1', '123-456-7890', 'Admin', 'Active'),
-('Alice Student', 'alice.student@university.com', 'hash2', '234-567-8901', 'Student', 'Active'),
-('Bob Employer', 'bob.employer@company.com', 'hash3', '345-678-9012', 'Employer', 'Active'),
-('Carol Lecturer', 'carol.lecturer@university.com', 'hash4', '456-789-0123', 'Lecturer', 'Active'),
-('Dave Student', 'dave.student@university.com', 'hash5', '567-890-1234', 'Student', 'Active');
+INSERT INTO Internships (employerID, title, description, location, duration) VALUES
+(3, 'Web Dev Intern', 'Build web apps', 'Remote', '12 weeks'),
+(3, 'Data Intern', 'Analyze data', 'NY', '10 weeks');
 
--- Internships
-INSERT INTO Internships (employerID, title, description, location, duration, requirements, status) VALUES
-(3, 'Software Engineering Intern', 'Develop web applications', 'New York', '12 weeks', 'Python, JavaScript', 'Open'),
-(3, 'Data Analysis Intern', 'Analyze business data', 'Boston', '10 weeks', 'SQL, Excel', 'Open'),
-(3, 'Marketing Intern', 'Social media marketing', 'Remote', '8 weeks', 'Communication skills', 'Closed');
-
--- Applications
 INSERT INTO Applications (studentID, internshipID, status) VALUES
-(2, 1, 'Approved'),  -- Alice approved for Software Engineering
-(2, 2, 'Pending'),   -- Alice pending for Data Analysis (won't be approved due to constraint)
-(5, 2, 'Approved');  -- Dave approved for Data Analysis
-
--- Assessments
-INSERT INTO Assessments (studentID, employerID, performanceScore, feedback) VALUES
-(2, 3, 85, 'Great coding skills'),
-(5, 3, 78, 'Good analytical skills'),
-(2, 3, 90, 'Improved performance');
-
--- Grades
-INSERT INTO Grades (studentID, lecturerID, grade, comments) VALUES
-(2, 4, 'A', 'Excellent work'),
-(5, 4, 'B', 'Good effort'),
-(2, 4, 'A', 'Consistent performance');
-
--- Reports
-INSERT INTO Reports (studentID, internshipID, documentPath) VALUES
-(2, 1, '/reports/alice_se_intern.pdf'),
-(5, 2, '/reports/dave_da_intern.pdf'),
-(2, 1, '/reports/alice_se_final.pdf');
-
--- Notifications
-INSERT INTO Notifications (userID, message, status) VALUES
-(2, 'Your application was approved!', 'Read'),
-(5, 'New assessment received', 'Unread'),
-(3, 'New application received', 'Unread');
+(2, 1, 'Approved'),
+(2, 2, 'Pending');
