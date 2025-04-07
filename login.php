@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['userID'] = $user['userID'];
         $_SESSION['name'] = $user['name'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['studentID'] = $user['studentID']; // Add this
         if ($user['role'] === 'Student') header("Location: student_dashboard.php");
         elseif ($user['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
         elseif ($user['role'] === 'Employer') header("Location: employer_dashboard.php");
