@@ -29,11 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en" class="light-style" dir="ltr" data-theme="theme-default" data-assets-path="./assets/" data-template="vertical-menu-template-free">
+<html lang="en" class="light-style layout-wide" dir="ltr" data-theme="theme-default" data-assets-path="./assets/" data-template="vertical-menu-template">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>IMS - Login</title>
+    <meta name="description" content="" />
     <link rel="icon" type="image/x-icon" href="./assets/img/favicon/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,49 +43,78 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="./assets/vendor/css/core.css" class="template-customizer-core-css" />
     <link rel="stylesheet" href="./assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />
     <link rel="stylesheet" href="./assets/css/demo.css" />
+    <link rel="stylesheet" href="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
     <script src="./assets/vendor/js/helpers.js"></script>
-    <script src="./assets/js/demo.js"></script>
+    <script src="./assets/js/config.js"></script>
+    <style>
+        /* Center and shrink the authentication wrapper */
+        .authentication-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Full viewport height */
+            padding: 0; /* Remove extra padding */
+        }
+        .authentication-inner {
+            max-width: 450px; /* Smaller width */
+            width: 100%; /* Responsive */
+            margin: 0 auto; /* Center horizontally */
+        }
+        .card {
+            box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        }
+    </style>
 </head>
 <body>
-    <div class="container-xxl">
-        <div class="authentication-wrapper authentication-basic container-p-y">
-            <div class="authentication-inner">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="mb-2">Welcome to IMS</h4>
-                        <p class="mb-4">Sign in to your account.</p>
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" required />
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" required />
-                            </div>
-                            <button type="submit" class="btn btn-primary d-grid w-100">Login</button>
-                        </form>
-                        <p class="text-center mt-3">
-                            <a href="forgot_password.php">Forgot Password?</a> | <a href="signup.php">Sign Up</a>
-                        </p>
-                        <?php if (isset($error)): ?>
-                            <div class="alert alert-danger mt-3" role="alert"><?php echo htmlspecialchars($error); ?></div>
-                        <?php endif; ?>
+    <div class="authentication-wrapper authentication-basic">
+        <div class="authentication-inner py-4">
+            <!-- Login -->
+            <div class="card p-2">
+                <div class="card-body">
+                    <div class="app-brand justify-content-center mb-4">
+                        <a href="index.php" class="app-brand-link gap-2">
+                            <span class="app-brand-text demo text-heading fw-bold">IMS</span>
+                        </a>
                     </div>
+                    <h4 class="mb-2">Welcome to IMS! 👋</h4>
+                    <p class="mb-4">Please sign-in to your account</p>
+                    <form id="formAuthentication" class="mb-3" method="POST">
+                        <div class="form-floating form-floating-outline mb-3">
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" autofocus required />
+                            <label for="email">Email</label>
+                        </div>
+                        <div class="form-floating form-floating-outline mb-3">
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required />
+                            <label for="password">Password</label>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-primary d-grid w-100" type="submit">Sign in</button>
+                        </div>
+                    </form>
+                    <p class="text-center">
+                        <span>New on our platform?</span>
+                        <a href="signup.php">
+                            <span>Create an account</span>
+                        </a>
+                    </p>
+                    <p class="text-center">
+                        <a href="forgot_password.php">
+                            <span>Forgot Password?</span>
+                        </a>
+                    </p>
+                    <?php if (isset($error)): ?>
+                        <div class="alert alert-danger mt-3" role="alert"><?php echo htmlspecialchars($error); ?></div>
+                    <?php endif; ?>
                 </div>
             </div>
+            <!-- /Login -->
         </div>
     </div>
-    <footer class="content-footer footer bg-footer-theme">
-        <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
-            <div class="mb-2 mb-md-0">
-                © <?php echo date("Y"); ?>, Internship Management System
-            </div>
-        </div>
-    </footer>
     <script src="./assets/vendor/libs/jquery/jquery.js"></script>
     <script src="./assets/vendor/libs/popper/popper.js"></script>
     <script src="./assets/vendor/js/bootstrap.js"></script>
+    <script src="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="./assets/vendor/js/menu.js"></script>
     <script src="./assets/js/main.js"></script>
 </body>
 </html>
