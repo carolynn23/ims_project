@@ -1,31 +1,49 @@
 <?php
 // login.php
 session_start();
-if (isset($_SESSION['role'])) {
-    if ($_SESSION['role'] === 'Student') header("Location: student_dashboard.php");
-    elseif ($_SESSION['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
-    elseif ($_SESSION['role'] === 'Employer') header("Location: employer_dashboard.php");
-    exit;
-}
+
+
 include 'config.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
-    $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['userID'] = $user['userID'];
-        $_SESSION['name'] = $user['name'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['studentID'] = $user['studentID']; // Add this
-        if ($user['role'] === 'Student') header("Location: student_dashboard.php");
-        elseif ($user['role'] === 'Lecturer') header("Location: lecturer_dashboard.php");
-        elseif ($user['role'] === 'Employer') header("Location: employer_dashboard.php");
-        exit;
-    } else {
-        $error = "Invalid email or password.";
+    
+    try {
+        $stmt = $pdo->prepare("SELECT userID, name, password, role, studentID FROM Users WHERE email = ? AND status = 'Active'");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user) {
+            var_dump($user, password_verify($password, $user['password']));
+            exit;
+        } else {
+            var_dump("No user found for email: $email");
+            exit;
+        }
+        
+        if ($user && password_verify($password, $user['password'])) {
+            $_SESSION['userID'] = $user['userID'];
+            $_SESSION['name'] = $user['name'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['studentID'] = $user['studentID'];
+            
+            $stmt = $pdo->prepare("UPDATE Users SET lastLogin = NOW() WHERE userID = ?");
+            $stmt->execute([$user['userID']]);
+            
+            switch ($user['role']) {
+                case 'Student': header("Location: student_dashboard.php"); break;
+                case 'Lecturer': header("Location: lecturer_dashboard.php"); break;
+                case 'Employer': header("Location: employer_dashboard.php"); break;
+                case 'Admin': header("Location: admin_dashboard.php"); break;
+                default: $error = "Invalid role.";
+            }
+            exit;
+        } else {
+            $error = "Invalid email or password.";
+        }
+    } catch (PDOException $e) {
+        $error = "Login failed: " . $e->getMessage();
     }
 }
 ?>
