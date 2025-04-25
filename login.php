@@ -1,9 +1,11 @@
 <?php
-// login.php
 session_start();
-
-
 include 'config.php';
+
+// Clear any existing session data to avoid conflicts
+session_unset();
+session_destroy();
+session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = trim($_POST['email']);
@@ -13,14 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt = $pdo->prepare("SELECT userID, name, password, role, studentID FROM Users WHERE email = ? AND status = 'Active'");
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($user) {
-            var_dump($user, password_verify($password, $user['password']));
-            exit;
-        } else {
-            var_dump("No user found for email: $email");
-            exit;
-        }
         
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['userID'] = $user['userID'];
@@ -31,14 +25,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt = $pdo->prepare("UPDATE Users SET lastLogin = NOW() WHERE userID = ?");
             $stmt->execute([$user['userID']]);
             
+            // Debug session
+            file_put_contents('debug.txt', print_r($_SESSION, true));
+            
             switch ($user['role']) {
-                case 'Student': header("Location: student_dashboard.php"); break;
-                case 'Lecturer': header("Location: lecturer_dashboard.php"); break;
-                case 'Employer': header("Location: employer_dashboard.php"); break;
-                case 'Admin': header("Location: admin_dashboard.php"); break;
-                default: $error = "Invalid role.";
+                case 'Student': 
+                    header("Location: student_dashboard.php"); 
+                    exit;
+                case 'Lecturer': 
+                    header("Location: lecturer_dashboard.php"); 
+                    exit;
+                case 'Employer': 
+                    header("Location: employer_dashboard.php"); 
+                    exit;
+                case 'Admin': 
+                    header("Location: admin_dashboard.php"); 
+                    exit;
+                default: 
+                    $error = "Invalid role.";
             }
-            exit;
         } else {
             $error = "Invalid email or password.";
         }
