@@ -37,6 +37,7 @@ $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch notifications
 $stmt = $pdo->prepare("SELECT message, status, createdAt FROM Notifications WHERE userID = ? ORDER BY createdAt DESC");
+//$stmt->execute([$user_id]);//
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle application submission
@@ -133,12 +134,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
     <link rel="stylesheet" href="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
     <style>
         .poster-img {
-            max-width: 100%;
-            width: 100%;
-            height: auto;
+            width: 600px;
+            height: 500px;
             border-radius: 8px;
             cursor: pointer;
             object-fit: cover;
+        }
+        .poster-placeholder {
+            width: 300px;
+            height: 200px;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 14px;
+            color: #696cff;
+            border: 1px solid #d9dee3;
         }
         .modal-fullscreen-img {
             max-width: 90vw;
@@ -165,8 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
                             <div class="bs-toast toast toast-placement-ex m-2 fade bg-<?php echo $_SESSION['toast']['type']; ?> top-0 end-0 show" role="alert" aria-live="assertive" aria-atomic="true">
                                 <div class="toast-header">
                                     <i class="bx bx-bell me-2"></i>
-                                    <div class="me-auto fw-medium">Notification</div>
-                                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                                    tton type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                                 </div>
                                 <div class="toast-body"><?php echo htmlspecialchars($_SESSION['toast']['message']); ?></div>
                             </div>
@@ -175,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
                         <?php if (isset($error)): ?>
                             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                         <?php endif; ?>
-                        <h4 class="py-3 mb-4"><span class="text-muted fw-light">Dashboard /</span> Student</h4>
+                        
 
                         <!-- Welcome & Notifications -->
                         <div class="card mb-4">
@@ -246,12 +258,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
                                                                         </div>
                                                                     </div>
                                                                 <?php elseif ($extension === 'pdf'): ?>
-                                                                    <p>PDF poster: <a href="<?php echo htmlspecialchars($internship['posterPath']); ?>" target="_blank">Download</a></p>
+                                                                    <div class="poster-placeholder">
+                                                                        <p>PDF Poster: <a href="<?php echo htmlspecialchars($internship['posterPath']); ?>" target="_blank" class="text-primary">Download</a></p>
+                                                                    </div>
                                                                 <?php else: ?>
-                                                                    <p>Invalid poster format.</p>
+                                                                    <div class="poster-placeholder">
+                                                                        <p>Invalid poster format</p>
+                                                                    </div>
                                                                 <?php endif; ?>
                                                             <?php else: ?>
-                                                                <p>No poster available.</p>
+                                                                <div class="poster-placeholder">
+                                                                    <p>No poster available</p>
+                                                                </div>
                                                             <?php endif; ?>
                                                         </div>
                                                         <!-- Details -->
@@ -296,17 +314,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
                         <!-- Resources & Academic History -->
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Resources & Academic History</h5>
+                                <h5 class="card-title mb-0">Resources & Guidelines</h5>
                             </div>
                             <div class="card-body">
-                                <p><a href="#" class="btn btn-outline-primary">Internship Guidelines</a></p>
+                                <div class="alert alert-info" role="alert">
+                                    <i class="bx bx-info-circle me-2"></i>
+                                Please verify that all necessary information and documents are correct and up to date to ensure a smooth internship application process. 
+                                Students are allowed to apply for as many internships are possible.
+                                Remember to follow all the instructions when appplying.
+                                </div>
+                        
                                 <p><strong>Student ID:</strong> <?php echo htmlspecialchars($student_id); ?></p>
-                                <p><strong>Grades:</strong> <?php
-                                    $stmt = $pdo->prepare("SELECT grade, comments FROM Grades WHERE studentID = ?");
-                                    $stmt->execute([$user_id]);
-                                    $grades = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                                    echo empty($grades) ? "No grades yet." : implode(", ", array_column($grades, 'grade'));
-                                ?></p>
+                                </p>
                             </div>
                         </div>
                     </div>
