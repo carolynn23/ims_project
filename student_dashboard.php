@@ -1,5 +1,4 @@
 <?php
-// student_dashboard.php
 session_start();
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Student') {
     header("Location: login.php");
@@ -8,17 +7,19 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Student') {
 include 'config.php';
 $user_id = $_SESSION['userID'];
 $user_name = $_SESSION['name'];
+$navbar_title = 'Student Dashboard';
+
 // Fetch studentID from database if not in session
 $student_id = isset($_SESSION['studentID']) ? $_SESSION['studentID'] : null;
 if (!$student_id) {
     $stmt = $pdo->prepare("SELECT studentID FROM Users WHERE userID = ?");
     $stmt->execute([$user_id]);
     $student_id = $stmt->fetchColumn();
-    $_SESSION['studentID'] = $student_id; // Set it for future use
+    $_SESSION['studentID'] = $student_id;
 }
 
 // Fetch available internships (Open status, not applied)
-$stmt = $pdo->prepare("SELECT i.internshipID, i.title, i.description, i.location, i.duration, u.name AS employer 
+$stmt = $pdo->prepare("SELECT i.internshipID, i.title, i.description, i.location, i.duration, i.posterPath, u.name AS employer 
                        FROM Internships i 
                        JOIN Users u ON i.employerID = u.userID 
                        WHERE i.status = 'Open' 
@@ -36,20 +37,52 @@ $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch notifications
 $stmt = $pdo->prepare("SELECT message, status, createdAt FROM Notifications WHERE userID = ? ORDER BY createdAt DESC");
-$stmt->execute([$user_id]);
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle application submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['apply'])) {
     $internshipID = $_POST['internshipID'];
+    $upload_dir = 'Uploads/';
+    if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+
     try {
-        $stmt = $pdo->prepare("INSERT INTO Applications (studentID, internshipID) VALUES (?, ?)");
+        // Insert application
+        $stmt = $pdo->prepare("INSERT INTO Applications (studentID, internshipID, status) VALUES (?, ?, 'Pending')");
         $stmt->execute([$user_id, $internshipID]);
+        $applicationID = $pdo->lastInsertId();
+
+        // Upload CV
+        if (isset($_FILES['cv']) && $_FILES['cv']['error'] === UPLOAD_ERR_OK && $_FILES['cv']['type'] === 'application/pdf') {
+            $cvPath = $upload_dir . time() . '_cv_' . basename($_FILES['cv']['name']);
+            if (move_uploaded_file($_FILES['cv']['tmp_name'], $cvPath)) {
+                $stmt = $pdo->prepare("INSERT INTO ApplicationDocuments (applicationID, documentPath, documentType) VALUES (?, ?, ?)");
+                $stmt->execute([$applicationID, $cvPath, 'CV']);
+            } else {
+                throw new Exception("Failed to move CV file.");
+            }
+        } else {
+            throw new Exception("Invalid or missing CV file. Please upload a PDF.");
+        }
+
+        // Upload Resume
+        if (isset($_FILES['resume']) && $_FILES['resume']['error'] === UPLOAD_ERR_OK && $_FILES['resume']['type'] === 'application/pdf') {
+            $resumePath = $upload_dir . time() . '_resume_' . basename($_FILES['resume']['name']);
+            if (move_uploaded_file($_FILES['resume']['tmp_name'], $resumePath)) {
+                $stmt = $pdo->prepare("INSERT INTO ApplicationDocuments (applicationID, documentPath, documentType) VALUES (?, ?, ?)");
+                $stmt->execute([$applicationID, $resumePath, 'Resume']);
+            } else {
+                throw new Exception("Failed to move resume file.");
+            }
+        } else {
+            throw new Exception("Invalid or missing resume file. Please upload a PDF.");
+        }
+
         $stmt = $pdo->prepare("INSERT INTO Notifications (userID, message) VALUES (?, ?)");
         $stmt->execute([$user_id, "You applied for an internship: " . $_POST['title']]);
+        $_SESSION['toast'] = ['type' => 'success', 'message' => 'Application submitted successfully'];
         header("Location: student_dashboard.php");
         exit;
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         $error = "Application failed: " . $e->getMessage();
     }
 }
@@ -58,19 +91,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['apply'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
     $internshipID = $_POST['internshipID'];
     $report = $_FILES['report'];
-    $upload_dir = 'uploads/';
+    $upload_dir = 'Uploads/';
     if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
 
-    $report_path = $upload_dir . time() . '_' . basename($report['name']);
-    if (move_uploaded_file($report['tmp_name'], $report_path)) {
-        $stmt = $pdo->prepare("INSERT INTO Reports (studentID, internshipID, documentPath) VALUES (?, ?, ?)");
-        $stmt->execute([$user_id, $internshipID, $report_path]);
-        $stmt = $pdo->prepare("INSERT INTO Notifications (userID, message) VALUES (?, ?)");
-        $stmt->execute([$user_id, "You submitted a report for internship ID: $internshipID"]);
-        header("Location: student_dashboard.php");
-        exit;
-    } else {
-        $error = "Report upload failed.";
+    try {
+        if ($report['error'] === UPLOAD_ERR_OK && $report['type'] === 'application/pdf') {
+            $report_path = $upload_dir . time() . '_' . basename($report['name']);
+            if (move_uploaded_file($report['tmp_name'], $report_path)) {
+                $stmt = $pdo->prepare("INSERT INTO Reports (studentID, internshipID, documentPath) VALUES (?, ?, ?)");
+                $stmt->execute([$user_id, $internshipID, $report_path]);
+                $stmt = $pdo->prepare("INSERT INTO Notifications (userID, message) VALUES (?, ?)");
+                $stmt->execute([$user_id, "You submitted a report for internship ID: $internshipID"]);
+                $_SESSION['toast'] = ['type' => 'success', 'message' => 'Report submitted successfully'];
+                header("Location: student_dashboard.php");
+                exit;
+            } else {
+                throw new Exception("Failed to move report file.");
+            }
+        } else {
+            throw new Exception("Invalid or missing report file. Please upload a PDF.");
+        }
+    } catch (Exception $e) {
+        $error = "Report upload failed: " . $e->getMessage();
     }
 }
 ?>
@@ -89,99 +131,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
     <link rel="stylesheet" href="./assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />
     <link rel="stylesheet" href="./assets/css/demo.css" />
     <link rel="stylesheet" href="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <style>
+        .poster-img {
+            max-width: 100%;
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            cursor: pointer;
+            object-fit: cover;
+        }
+        .modal-fullscreen-img {
+            max-width: 90vw;
+            max-height: 90vh;
+            margin: auto;
+            display: block;
+        }
+        .internship-card {
+            margin-bottom: 2rem;
+        }
+    </style>
     <script src="./assets/vendor/js/helpers.js"></script>
     <script src="./assets/js/config.js"></script>
-    <style>
-        .menu-vertical { background-color: #4B3F99; }
-        .menu-item .menu-link { color: #fff; }
-        .menu-item .menu-link:hover { background-color: #6C63FF; }
-        .layout-navbar { background-color: #4B3F99; color: #fff; }
-        .navbar-brand { color: #fff; }
-    </style>
 </head>
 <body>
     <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
-            <!-- Sidebar -->
-            <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
-                <div class="app-brand demo">
-                    <a href="index.php" class="app-brand-link">
-                        <span class="app-brand-text demo menu-text fw-bold ms-2">IMS</span>
-                    </a>
-                    <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
-                        <i class="bx bx-chevron-left bx-sm align-middle"></i>
-                    </a>
-                </div>
-                <div class="menu-inner-shadow"></div>
-                <ul class="menu-inner py-1">
-                    <li class="menu-item active">
-                        <a href="student_dashboard.php" class="menu-link">
-                            <i class="menu-icon tf-icons bx bx-home-circle"></i>
-                            <div data-i18n="Dashboard">Dashboard</div>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="logout.php" class="menu-link">
-                            <i class="menu-icon tf-icons bx bx-log-out"></i>
-                            <div data-i18n="Logout">Logout</div>
-                        </a>
-                    </li>
-                </ul>
-            </aside>
-            <!-- /Sidebar -->
+            <?php include 'sidebar.php'; ?>
             <div class="layout-page">
-                <!-- Navbar -->
-                <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme" id="layout-navbar">
-                    <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
-                        <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)">
-                            <i class="bx bx-menu bx-sm"></i>
-                        </a>
-                    </div>
-                    <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-                        <div class="navbar-nav align-items-center">
-                            <div class="nav-item d-flex align-items-center">
-                                <span class="navbar-brand">Student Dashboard</span>
-                            </div>
-                        </div>
-                        <ul class="navbar-nav flex-row align-items-center ms-auto">
-                            <li class="nav-item navbar-dropdown dropdown-user dropdown">
-                                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
-                                    <div class="avatar avatar-online">
-                                        <img src="./assets/img/avatars/1.png" alt class="w-px-40 h-auto rounded-circle" />
-                                    </div>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="#">
-                                            <div class="d-flex">
-                                                <div class="flex-shrink-0 me-3">
-                                                    <div class="avatar avatar-online">
-                                                        <img src="./assets/img/avatars/1.png" alt class="w-px-40 h-auto rounded-circle" />
-                                                    </div>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <span class="fw-medium d-block"><?php echo htmlspecialchars($user_name); ?></span>
-                                                    <small class="text-muted">Student</small>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </li>
-                                    <li><div class="dropdown-divider"></div></li>
-                                    <li>
-                                        <a class="dropdown-item" href="logout.php">
-                                            <i class="bx bx-power-off me-2"></i>
-                                            <span class="align-middle">Log Out</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </nav>
-                <!-- /Navbar -->
-                <!-- Content -->
+                <?php include 'navbar.php'; ?>
                 <div class="content-wrapper">
                     <div class="container-xxl flex-grow-1 container-p-y">
+                        <?php if (isset($_SESSION['toast'])): ?>
+                            <div class="bs-toast toast toast-placement-ex m-2 fade bg-<?php echo $_SESSION['toast']['type']; ?> top-0 end-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+                                <div class="toast-header">
+                                    <i class="bx bx-bell me-2"></i>
+                                    <div class="me-auto fw-medium">Notification</div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                                </div>
+                                <div class="toast-body"><?php echo htmlspecialchars($_SESSION['toast']['message']); ?></div>
+                            </div>
+                            <?php unset($_SESSION['toast']); ?>
+                        <?php endif; ?>
+                        <?php if (isset($error)): ?>
+                            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+                        <?php endif; ?>
                         <h4 class="py-3 mb-4"><span class="text-muted fw-light">Dashboard /</span> Student</h4>
 
                         <!-- Welcome & Notifications -->
@@ -204,108 +197,99 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
                             </div>
                         </div>
 
-                        <!-- Apply for Internships -->
+                        <!-- Available Internships -->
                         <div class="card mb-4">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">Available Internships</h5>
                             </div>
                             <div class="card-body">
-                                <?php if (isset($error)): ?>
-                                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-                                <?php endif; ?>
                                 <?php if (empty($internships)): ?>
                                     <p>No open internships available.</p>
                                 <?php else: ?>
-                                    <div class="table-responsive">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Title</th>
-                                                    <th>Description</th>
-                                                    <th>Location</th>
-                                                    <th>Duration</th>
-                                                    <th>Employer</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($internships as $internship): ?>
-                                                    <tr>
-                                                        <td><?php echo htmlspecialchars($internship['title']); ?></td>
-                                                        <td><?php echo htmlspecialchars($internship['description']); ?></td>
-                                                        <td><?php echo htmlspecialchars($internship['location'] ?: 'N/A'); ?></td>
-                                                        <td><?php echo htmlspecialchars($internship['duration'] ?: 'N/A'); ?></td>
-                                                        <td><?php echo htmlspecialchars($internship['employer']); ?></td>
-                                                        <td>
-                                                            <form method="POST">
-                                                                <input type="hidden" name="internshipID" value="<?php echo $internship['internshipID']; ?>">
-                                                                <input type="hidden" name="title" value="<?php echo htmlspecialchars($internship['title']); ?>">
-                                                                <button type="submit" name="apply" class="btn btn-primary btn-sm">Apply</button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
+                                    <div class="row">
+                                        <?php foreach ($internships as $internship): ?>
+                                            <div class="col-md-6 internship-card">
+                                                <div class="card">
+                                                    <div class="card-body">
+                                                        <!-- Poster -->
+                                                        <div class="text-center mb-3">
+                                                            <?php if ($internship['posterPath']): ?>
+                                                                <?php
+                                                                $extension = strtolower(pathinfo($internship['posterPath'], PATHINFO_EXTENSION));
+                                                                if (in_array($extension, ['jpg', 'jpeg', 'png'])): ?>
+                                                                    <img src="<?php echo htmlspecialchars($internship['posterPath']); ?>" 
+                                                                         alt="Poster" 
+                                                                         class="poster-img" 
+                                                                         data-bs-toggle="modal" 
+                                                                         data-bs-target="#posterModal<?php echo $internship['internshipID']; ?>" 
+                                                                         data-full-img="<?php echo htmlspecialchars($internship['posterPath']); ?>">
+                                                                    <!-- Unique Modal for Each Internship -->
+                                                                    <div class="modal fade" 
+                                                                         id="posterModal<?php echo $internship['internshipID']; ?>" 
+                                                                         tabindex="-1" 
+                                                                         aria-labelledby="posterModalLabel<?php echo $internship['internshipID']; ?>" 
+                                                                         aria-hidden="true">
+                                                                        <div class="modal-dialog modal-xl">
+                                                                            <div class="modal-content">
+                                                                                <div class="modal-header">
+                                                                                    <h5 class="modal-title" id="posterModalLabel<?php echo $internship['internshipID']; ?>">
+                                                                                        Internship Poster: <?php echo htmlspecialchars($internship['title']); ?>
+                                                                                    </h5>
+                                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                                </div>
+                                                                                <div class="modal-body text-center">
+                                                                                    <img src="<?php echo htmlspecialchars($internship['posterPath']); ?>" 
+                                                                                         alt="Full Poster" 
+                                                                                         class="modal-fullscreen-img">
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                <?php elseif ($extension === 'pdf'): ?>
+                                                                    <p>PDF poster: <a href="<?php echo htmlspecialchars($internship['posterPath']); ?>" target="_blank">Download</a></p>
+                                                                <?php else: ?>
+                                                                    <p>Invalid poster format.</p>
+                                                                <?php endif; ?>
+                                                            <?php else: ?>
+                                                                <p>No poster available.</p>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <!-- Details -->
+                                                        <h5><?php echo htmlspecialchars($internship['title']); ?></h5>
+                                                        <p><strong>Description:</strong> <?php echo htmlspecialchars($internship['description']); ?></p>
+                                                        <p><strong>Location:</strong> <?php echo htmlspecialchars($internship['location'] ?: 'N/A'); ?></p>
+                                                        <p><strong>Duration:</strong> <?php echo htmlspecialchars($internship['duration'] ?: 'N/A'); ?></p>
+                                                        <p><strong>Employer:</strong> <?php echo htmlspecialchars($internship['employer']); ?></p>
+                                                        <!-- Apply Form -->
+                                                        <form method="POST" enctype="multipart/form-data">
+                                                            <input type="hidden" name="internshipID" value="<?php echo $internship['internshipID']; ?>">
+                                                            <input type="hidden" name="title" value="<?php echo htmlspecialchars($internship['title']); ?>">
+                                                            <div class="mb-3">
+                                                                <label for="cv<?php echo $internship['internshipID']; ?>" class="form-label">Upload CV (PDF)</label>
+                                                                <input type="file" 
+                                                                       name="cv" 
+                                                                       id="cv<?php echo $internship['internshipID']; ?>" 
+                                                                       accept=".pdf" 
+                                                                       required 
+                                                                       class="form-control" />
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label for="resume<?php echo $internship['internshipID']; ?>" class="form-label">Upload Resume (PDF)</label>
+                                                                <input type="file" 
+                                                                       name="resume" 
+                                                                       id="resume<?php echo $internship['internshipID']; ?>" 
+                                                                       accept=".pdf" 
+                                                                       required 
+                                                                       class="form-control" />
+                                                            </div>
+                                                            <button type="submit" name="apply" class="btn btn-primary">Apply</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
-                            </div>
-                        </div>
-
-                        <!-- Track Applications -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Your Applications</h5>
-                            </div>
-                            <div class="card-body">
-                                <?php if (empty($applications)): ?>
-                                    <p>No applications submitted yet.</p>
-                                <?php else: ?>
-                                    <div class="table-responsive">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Internship</th>
-                                                    <th>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($applications as $app): ?>
-                                                    <tr>
-                                                        <td><?php echo htmlspecialchars($app['title']); ?></td>
-                                                        <td><?php echo htmlspecialchars($app['status']); ?></td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
-                        <!-- Submit Reports -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Submit Internship Report</h5>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" enctype="multipart/form-data">
-                                    <div class="mb-3">
-                                        <label for="internshipID" class="form-label">Select Internship</label>
-                                        <select class="form-select" id="internshipID" name="internshipID" required>
-                                            <?php foreach ($applications as $app): ?>
-                                                <?php if ($app['status'] === 'Approved'): ?>
-                                                    <option value="<?php echo $app['applicationID']; ?>"><?php echo htmlspecialchars($app['title']); ?></option>
-                                                <?php endif; ?>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="report" class="form-label">Report Document</label>
-                                        <input type="file" class="form-control" id="report" name="report" accept=".pdf" required />
-                                    </div>
-                                    <button type="submit" name="submit_report" class="btn btn-primary">Submit</button>
-                                </form>
                             </div>
                         </div>
 
@@ -328,11 +312,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_report'])) {
                     </div>
                     <div class="content-backdrop fade"></div>
                 </div>
-                <!-- /Content -->
             </div>
         </div>
         <div class="layout-overlay layout-menu-toggle"></div>
     </div>
+
     <script src="./assets/vendor/libs/jquery/jquery.js"></script>
     <script src="./assets/vendor/libs/popper/popper.js"></script>
     <script src="./assets/vendor/js/bootstrap.js"></script>
