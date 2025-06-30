@@ -64,6 +64,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <div>Dashboard</div>
                 </a>
             </li>
+            <li class="menu-item <?php echo $current_page === 'your_applications.php' ? 'active' : ''; ?>">
+                <a href="your_applications.php" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-list-ul"></i>
+                    <div>Your Applications</div>
+                </a>
+            </li>
+            <li class="menu-item <?php echo $current_page === 'submit_report.php' ? 'active' : ''; ?>">
+                <a href="submit_report.php" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-file"></i>
+                    <div>Submit Report</div>
+                </a>
+            </li>
         <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'Lecturer'): ?>
             <li class="menu-item <?php echo $current_page === 'lecturer_dashboard.php' ? 'active' : ''; ?>">
                 <a href="lecturer_dashboard.php" class="menu-link">
@@ -78,6 +90,41 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <div>Dashboard</div>
                 </a>
             </li>
+            <li class="menu-item <?php echo $current_page === 'your_internships.php' ? 'active' : ''; ?>">
+                <a href="your_internships.php" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-briefcase-alt-2"></i>
+                    <div>Your Internships</div>
+                </a>
+            </li>
+            <li class="menu-item <?php echo $current_page === 'manage_applications.php' ? 'active' : ''; ?>">
+                <a href="manage_applications.php" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-user-check"></i>
+                    <div>Manage Applications</div>
+                </a>
+            </li>
+            <li class="menu-item <?php echo $current_page === 'employer_assessment.php' ? 'active' : ''; ?>">
+                <a href="employer_assessment.php" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-briefcase-alt-2"></i>
+                    <div>Assessment</div>
+                </a>
+            </li>
         <?php endif; ?>
+        <!-- Separator -->
+        <li class="menu-item">
+            <hr class="my-3">
+        </li>
+        <!-- Notifications and Logout -->
+        <li class="menu-item <?php echo $current_page === 'notifications.php' ? 'active' : ''; ?>">
+            <a href="notifications.php" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-bell"></i>
+                <div>Notifications</div>
+            </a>
+        </li>
+        <li class="menu-item">
+            <a href="logout.php" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-log-out"></i>
+                <div>Logout</div>
+            </a>
+        </li>
     </ul>
 </aside>
