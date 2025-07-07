@@ -14,7 +14,7 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role']) !== 'student')
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, student_id, institution, department, field_of_interest, skills FROM Users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, student_id, institution, department, field_of_interest, skills, level FROM Users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -125,7 +125,7 @@ if (isset($_POST['logout'])) {
                                                 </div>
                                                 <div class="flex-grow-1">
                                                     <span class="fw-semibold d-block"><?php echo htmlspecialchars($user['name']); ?></span>
-                                                    <small class="text-muted"><?php echo htmlspecialchars($user['email']); ?></small>
+                                                    <small class="text-muted"><?php echo htmlspecialchars($_SESSION['email']); ?></small>
                                                 </div>
                                             </div>
                                         </a>
@@ -174,7 +174,41 @@ if (isset($_POST['logout'])) {
                                             <strong>Field of Interest:</strong> <?php echo htmlspecialchars($user['field_of_interest'] ?: 'Not set'); ?>
                                         </div>
                                         <div class="mb-3">
+                                            <strong>Level:</strong> <?php echo htmlspecialchars($user['level'] ?: 'Not set'); ?>
+                                        </div>
+                                        <div class="mb-3">
                                             <strong>Skills:</strong> <?php echo htmlspecialchars($user['skills'] ?: 'None'); ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card mb-4">
+                                    <h5 class="card-header">Analytics</h5>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="card h-100">
+                                                    <div class="card-body text-center">
+                                                        <h3 class="text-primary">14</h3>
+                                                        <p class="mb-0">Job Offers</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card h-100">
+                                                    <div class="card-body text-center">
+                                                        <h3 class="text-success">10</h3>
+                                                        <p class="mb-0">Applications Submitted</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card h-100">
+                                                    <div class="card-body text-center">
+                                                        <h3 class="text-info">2</h3>
+                                                        <p class="mb-0">Applications Accepted</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
