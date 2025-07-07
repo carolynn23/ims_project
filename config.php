@@ -1,14 +1,13 @@
 <?php
-// config.php
 $host = 'localhost';
-$dbname = 'ims_db';
-$username = 'root'; // Default XAMpp MySQL user
-$password = '';     // Default XAMPP MySQL password
-
+$db = 'ims2_db'; // Confirmed correct variable
+$user = 'root';
+$pass = ''; // Update if you have a MySQL root password
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "<!-- PDO Connected Successfully -->";
 } catch (PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
+    echo "<!-- PDO Error: " . $e->getMessage() . " -->";
 }
 ?>
